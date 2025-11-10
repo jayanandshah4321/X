@@ -1,0 +1,133 @@
+import numpy as np
+import re
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Embedding, Lambda
+from tensorflow.keras.preprocessing.text import Tokenizer
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# -------------------------------
+# Step a. Data Preparation
+# -------------------------------
+
+data = """"""
+
+# Clean and split sentences
+sentences = data.split('.')
+clean_sent = []
+for sentence in sentences:
+    if sentence.strip() == "":
+        continue
+    sentence = re.sub('[^A-Za-z0-9]+', ' ', sentence)
+    sentence = re.sub(r'(?:^| )\w (?:$| )', ' ', sentence).strip()
+    sentence = sentence.lower()
+    clean_sent.append(sentence)
+
+print("Cleaned Sentences:\n", clean_sent[:3])
+
+# -------------------------------
+# Step b. Generate Training Data
+# -------------------------------
+
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(clean_sent)
+
+# Convert words to numbers
+sequences = tokenizer.texts_to_sequences(clean_sent)
+print(sequences[:2])
+
+# Get word <-> index mappings directly from tokenizer
+word_to_index = tokenizer.word_index
+index_to_word = {v: k for k, v in word_to_index.items()}
+
+vocab_size = len(word_to_index) + 1  # +1 for padding
+print("Vocabulary size:", vocab_size)
+
+context_size = 2
+contexts = []
+targets = []
+
+for sequence in sequences:
+    for i in range(context_size, len(sequence) - context_size):
+        target = sequence[i]
+        context = [sequence[i - 2], sequence[i - 1], sequence[i + 1], sequence[i + 2]]
+        contexts.append(context)
+        targets.append(target)
+
+print("Sample context-target pairs:")
+for i in range(3):
+    words = [index_to_word.get(j) for j in contexts[i]]
+    print(words, " -> ", index_to_word.get(targets[i]))
+
+X = np.array(contexts)
+Y = np.array(targets)
+
+# -------------------------------
+# Step c. Train CBOW Model
+# -------------------------------
+
+emb_size = 10  # size of the embedding vector
+
+model = Sequential([
+    Embedding(input_dim=vocab_size, output_dim=emb_size, input_length=2*context_size),
+    Lambda(lambda x: tf.reduce_mean(x, axis=1)),  # average context embeddings
+    Dense(256, activation='relu'),
+    Dense(512, activation='relu'),
+    Dense(vocab_size, activation='softmax')
+])
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+history = model.fit(X, Y, epochs=80, verbose=1)
+
+# -------------------------------
+# Step d. Output & Visualization
+# -------------------------------
+
+# Plot loss and accuracy
+plt.figure(figsize=(10,4))
+plt.plot(history.history['loss'], label='Loss')
+plt.plot(history.history['accuracy'], label='Accuracy')
+plt.title("Training Progress (CBOW)")
+plt.xlabel("Epochs")
+plt.ylabel("Value")
+plt.legend()
+plt.show()
+
+# Extract learned word embeddings
+embeddings = model.get_weights()[0]
+
+# Visualize word embeddings using PCA
+pca = PCA(n_components=2)
+reduced_embeddings = pca.fit_transform(embeddings)
+
+plt.figure(figsize=(10,8))
+for word, idx in word_to_index.items():
+    plt.scatter(reduced_embeddings[idx, 0], reduced_embeddings[idx, 1])
+    plt.annotate(word, (reduced_embeddings[idx, 0]+0.01, reduced_embeddings[idx, 1]+0.01))
+plt.title("Word Embeddings (CBOW PCA Visualization)")
+plt.show()
+
+# -------------------------------
+# Step e. Testing Model Predictions
+# -------------------------------
+
+test_sentences = [
+    "transmission of covid",
+    "influenza virus spread",
+    "shorter incubation period",
+    "reproductive number between"
+]
+
+for sent in test_sentences:
+    test_words = sent.lower().split()
+    x_test = [word_to_index.get(i, 0) for i in test_words]
+    # pad/truncate to length 4
+    x_test = x_test[:4] + [0]*(4-len(x_test))
+    x_test = np.array([x_test])
+
+    pred = model.predict(x_test, verbose=0)
+    pred_idx = np.argmax(pred[0])
+    print(f"Context: {test_words} -> Predicted word: '{index_to_word.get(pred_idx, '?')}'")
