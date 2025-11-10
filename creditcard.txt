@@ -1,0 +1,101 @@
+# a. Import required libraries
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+
+# b. Upload / access the dataset
+# (Download dataset from https://www.kaggle.com/mlg-ulb/creditcardfraud)
+data = pd.read_csv("creditcard.csv")
+print("Dataset shape:", data.shape)
+
+# Separate features and target
+X = data.drop(columns=['Class'])
+y = data['Class']
+
+# Split data into train and test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+# Use only normal transactions (Class = 0) for training
+X_train_normal = X_train[y_train == 0]
+
+# Scale the data using MinMaxScaler
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train_normal)
+X_test_scaled = scaler.transform(X_test)
+
+# c+d. Build Autoencoder model (Encoder + Decoder together)
+input_dim = X_train_scaled.shape[1]
+autoencoder = Sequential([
+    Dense(32, activation='relu', input_shape=(input_dim,)),
+    Dense(16, activation='relu'),
+    Dense(8, activation='relu'),
+    Dense(16, activation='relu'),
+    Dense(32, activation='relu'),
+    Dense(input_dim, activation='sigmoid')
+])
+
+# e. Compile model
+autoencoder.compile(optimizer=Adam(), loss='mse', metrics=['mse'])
+
+# Train the model
+history = autoencoder.fit(
+    X_train_scaled, X_train_scaled,
+    epochs=20,
+    batch_size=512,
+    validation_split=0.2,
+    verbose=1
+)
+
+# --- 📉 Plot Training vs Validation Loss ---
+plt.figure(figsize=(8,5))
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss (MSE)')
+plt.title('Autoencoder Training & Validation Loss')
+plt.legend()
+plt.show()
+
+# --- 🔍 Compute Reconstruction Error ---
+reconstructions = autoencoder.predict(X_test_scaled)
+mse = np.mean(np.power(X_test_scaled - reconstructions, 2), axis=1)
+
+# Define threshold for anomaly
+threshold = np.mean(mse) + 3*np.std(mse)
+print("\nThreshold for anomaly detection:", threshold)
+
+# Predict anomalies (1 = fraud)
+y_pred = [1 if e > threshold else 0 for e in mse]
+
+# --- 📊 Evaluation ---
+print("\nAccuracy:", accuracy_score(y_test, y_pred))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# --- 📈 Plot Reconstruction Error Distribution ---
+plt.figure(figsize=(8,5))
+plt.hist(mse[y_test == 0], bins=50, alpha=0.6, label='Normal')
+plt.hist(mse[y_test == 1], bins=50, alpha=0.6, label='Fraud')
+plt.axvline(threshold, color='red', linestyle='--', linewidth=2, label='Threshold')
+plt.title("Reconstruction Error Distribution")
+plt.xlabel("Reconstruction Error (MSE)")
+plt.ylabel("Number of Samples")
+plt.legend()
+plt.show()
+
+# --- 🔴 Scatter Plot to Visualize Anomalies ---
+plt.figure(figsize=(10,6))
+plt.scatter(range(len(mse)), mse, c=['red' if e > threshold else 'blue' for e in mse], alpha=0.6)
+plt.axhline(threshold, color='green', linestyle='--', linewidth=2, label='Threshold')
+plt.title('Scatter Plot of Reconstruction Errors')
+plt.xlabel('Sample Index')
+plt.ylabel('Reconstruction Error (MSE)')
+plt.legend(['Threshold', 'Samples'])
+plt.show()
