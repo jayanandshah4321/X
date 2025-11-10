@@ -1,0 +1,71 @@
+import tensorflow as tf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.layers import Dense,Conv2D,MaxPooling2D,Flatten,Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.utils import to_categorical
+
+# Load the data (returns a single DataFrame)
+train_df = pd.read_csv('mnist_train.csv')
+test_df = pd.read_csv('mnist_test.csv')
+
+# Usually, the first column is the label, and the rest are pixel values
+y_train = train_df.iloc[:, 0].values
+X_train = train_df.iloc[:, 1:].values
+
+y_test = test_df.iloc[:, 0].values
+X_test = test_df.iloc[:, 1:].values
+
+# Show an image
+plt.imshow(X_train[0].reshape(28, 28), cmap='gray')
+plt.title(f"Label: {y_train[0]}")
+plt.show()
+
+X_train=X_train.reshape(X_train.shape[0],28,28,1)
+X_test=X_test.reshape(X_test.shape[0],28,28,1)
+
+X_train=X_train.astype('float32')/255
+X_test=X_test.astype('float32')/255
+
+y_train=to_categorical(y_train)
+y_test=to_categorical(y_test)
+
+model=Sequential([
+        Conv2D(32,(3,3),activation='relu',input_shape=(28,28,1)),
+        MaxPooling2D((2,2)),
+        Conv2D(64,(3,3),activation='relu',input_shape=(28,28,1)),
+        MaxPooling2D((2,2)),
+        Flatten(),
+        Dense(128,activation='relu'),
+        Dropout(0.5),
+        Dense(10, activation='softmax') 
+])
+
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+model.summary()
+
+history=model.fit(X_train,y_train,epochs=11,batch_size=64,verbose=1,validation_data=(X_test,y_test))
+
+test_loss,test_acc=model.evaluate(X_test,y_test)
+
+print('Test accuracy:',test_acc)
+plt.figure(figsize=(12,5))
+plt.plot(history.history['loss'],label='Training Loss')
+plt.plot(history.history['val_loss'],label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
