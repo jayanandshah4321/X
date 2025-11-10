@@ -1,0 +1,122 @@
+# ==========================================================
+# 🧠 ECG Anomaly Detection using Autoencoder
+# ==========================================================
+
+# a. Import Required Libraries
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+
+# ----------------------------------------------------------
+# b. Upload / Access the Dataset (no header in CSV)
+# ----------------------------------------------------------
+data = pd.read_csv('ecg_data.csv', header=None)
+print("Dataset Shape:", data.shape)
+print(data.head())
+
+# The last column is the target (class)
+X = data.iloc[:, :-1].values
+y = data.iloc[:, -1].values
+
+# ----------------------------------------------------------
+# Split into train-test sets
+# ----------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# Select only normal class (class=1) for training (Novelty Detection)
+X_train_normal = X_train[y_train == 1]
+
+# Scale the data
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train_normal)
+X_test_scaled = scaler.transform(X_test)
+
+# ----------------------------------------------------------
+# c. Encoder converts into Latent Representation
+# d. Decoder converts it back to Original Input
+# ----------------------------------------------------------
+autoencoder = Sequential([
+    Dense(64, activation='relu', input_shape=(X_train_scaled.shape[1],)),
+    Dense(32, activation='relu'),
+    Dense(16, activation='relu'),   # Latent layer
+    Dense(32, activation='relu'),
+    Dense(64, activation='relu'),
+    Dense(X_train_scaled.shape[1], activation='sigmoid')  # Reconstruction layer
+])
+
+# ----------------------------------------------------------
+# e. Compile Model with Optimizer, Loss & Metrics
+# ----------------------------------------------------------
+autoencoder.compile(optimizer=Adam(learning_rate=0.001),
+                    loss='mean_squared_error',
+                    metrics=['mse'])
+
+# ----------------------------------------------------------
+# Train the Model
+# ----------------------------------------------------------
+history = autoencoder.fit(
+    X_train_scaled, X_train_scaled,
+    epochs=20,
+    batch_size=512,
+    validation_data=(X_test_scaled, X_test_scaled),
+    verbose=1
+)
+
+# ----------------------------------------------------------
+# Plot Training and Validation Loss
+# ----------------------------------------------------------
+plt.figure(figsize=(8,5))
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title("Model Loss Curve")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
+
+# ----------------------------------------------------------
+# Determine Threshold for Anomaly
+# ----------------------------------------------------------
+reconstructions = autoencoder.predict(X_train_scaled)
+train_loss = tf.keras.losses.mse(reconstructions, X_train_scaled)
+threshold = np.mean(train_loss.numpy()) + np.std(train_loss.numpy())
+print("Threshold value:", threshold)
+
+# ----------------------------------------------------------
+# Detect Anomalies on Test Data
+# ----------------------------------------------------------
+test_reconstructions = autoencoder.predict(X_test_scaled)
+test_loss = tf.keras.losses.mse(test_reconstructions, X_test_scaled)
+
+# If reconstruction error > threshold => anomaly (-1)
+y_pred = np.where(test_loss > threshold, -1, 1)
+
+# Convert actual test labels: 1 = normal, -1 = anomaly
+y_test_actual = np.where(y_test == 1, 1, -1)
+
+# ----------------------------------------------------------
+# Evaluate Accuracy
+# ----------------------------------------------------------
+acc = accuracy_score(y_test_actual, y_pred)
+print("✅ Accuracy on Test Data:", acc)
+
+# ----------------------------------------------------------
+# Scatter Plot to Visualize Anomalies
+# ----------------------------------------------------------
+plt.figure(figsize=(8,5))
+plt.scatter(range(len(test_loss)), test_loss, c=(y_pred == -1), cmap='coolwarm')
+plt.axhline(y=threshold, color='green', linestyle='--', label='Threshold')
+plt.title("Anomaly Detection using Autoencoder")
+plt.xlabel("Test Samples")
+plt.ylabel("Reconstruction Error")
+plt.legend()
+plt.show()
