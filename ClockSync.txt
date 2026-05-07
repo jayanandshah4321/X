@@ -1,0 +1,85 @@
+import socket, time
+from datetime import datetime
+
+HOST = ''
+PORT = 9999
+
+s = socket.socket()
+s.bind((HOST, PORT))
+s.listen(5)
+
+print("Server started...")
+
+num = int(input("Enter number of clients: "))
+clients = []
+
+# Accept clients
+for i in range(num):
+    print(f"Waiting for client {i+1}...")
+    conn, addr = s.accept()
+    print("Connected:", addr)
+    clients.append(conn)
+
+print("\nAll clients connected. Starting synchronization...\n")
+
+while True:
+    times = []
+
+    # Receive time from all clients
+    for i, c in enumerate(clients):
+        t = float(c.recv(1024).decode())
+        times.append(t)
+
+    server_time = time.time()
+
+    # Calculate average time
+    avg = (sum(times) + server_time) / (len(times) + 1)
+
+    print("\n--- Synchronization Round ---")
+    for i, t in enumerate(times):
+        print(f"Client {i+1} Time:", datetime.fromtimestamp(t).strftime('%H:%M:%S'))
+
+    print("Server Time:", datetime.fromtimestamp(server_time).strftime('%H:%M:%S'))
+    print("Average Time:", datetime.fromtimestamp(avg).strftime('%H:%M:%S'))
+
+    # Send offset to each client
+    for i, c in enumerate(clients):
+        offset = avg - times[i]
+        c.send(str(offset).encode())
+
+    print("-----------------------------\n")
+
+    time.sleep(5)  # repeat every 5 seconds
+
+
+
+import socket, time, random
+from datetime import datetime
+
+HOST = input("Enter server IP: ")
+PORT = 9999
+
+c = socket.socket()
+c.connect((HOST, PORT))
+
+print("Connected to server\n")
+
+while True:
+    # Simulate clock drift
+    local = time.time() + random.uniform(-5, 5)
+
+    # Send local time
+    c.send(str(local).encode())
+
+    # Receive offset
+    offset = float(c.recv(1024).decode())
+
+    # Adjust time
+    new_time = local + offset
+
+    print("Local Time   :", datetime.fromtimestamp(local).strftime('%H:%M:%S'))
+    print("Offset       :", round(offset, 2))
+    print("Adjusted Time:", datetime.fromtimestamp(new_time).strftime('%H:%M:%S'))
+    print("-----------------------------\n")
+
+    time.sleep(5)
