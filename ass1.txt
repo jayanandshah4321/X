@@ -1,0 +1,42 @@
+
+import java.rmi.*;
+public interface RemoteAdd extends Remote {
+    int add(int a, int b) throws RemoteException;
+}
+
+import java.rmi.*;
+import java.rmi.server.*;
+// import java.rmi.registry.*;
+
+public class Server extends UnicastRemoteObject implements RemoteAdd {
+
+    public Server() throws RemoteException {}
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Start registry programmatically
+//        LocateRegistry.createRegistry(1099);
+
+        Server obj = new Server();
+        Naming.rebind("rmi://localhost/AddService", obj);
+
+        System.out.println("Server Ready");
+    }
+}
+
+
+import java.rmi.*;
+import java.util.*;
+public class Client {
+    public static void main(String[] args) throws Exception {
+        Scanner sc = new Scanner(System.in);
+        RemoteAdd obj = (RemoteAdd) Naming.lookup("rmi://localhost/AddService");
+        int a,b;
+        a = sc.nextInt();
+        b = sc.nextInt();
+        System.out.println("Sum = " + obj.add(a, b));
+    }
+}
