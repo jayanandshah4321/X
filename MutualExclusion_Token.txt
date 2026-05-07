@@ -1,0 +1,60 @@
+package token;
+import java.util.*;
+
+public class Token {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.println("Enter number of nodes:");
+        int n = sc.nextInt();
+
+        for (int i = 0; i < n; i++) {
+            System.out.print(i + " -> ");
+        }
+        System.out.println("0");
+
+        int token = 0;
+
+        while (true) {
+            System.out.println("\nCurrent token at: " + token);
+
+            System.out.println("Enter sender node:");
+            int sender = sc.nextInt();
+
+            System.out.println("Enter receiver node:");
+            int recv = sc.nextInt();
+
+            System.out.println("Enter data:");
+            String data = sc.next();
+
+            System.out.println("Token passing:");
+
+            // Proper token movement
+            while (token != sender) {
+                System.out.print(token + " -> ");
+                token = (token + 1) % n;
+            }
+            System.out.println(sender);
+
+            // Critical Section
+            System.out.println("Node (sender) " + sender + " enters CS");
+            System.out.println("Sending data = " + data);
+
+            int j = sender;
+            while (j != recv) {
+                int next = (j + 1) % n;
+                System.out.println("Data transferred from " + j + " to " + next);
+                j = next;
+            }
+
+            System.out.println("Node (receiver) " + recv + " received data = " + data);
+
+            // Pass token forward
+            token = (sender + 1) % n;
+
+            System.out.println("Do you want to continue? (1/0)");
+            int ch = sc.nextInt();
+            if (ch == 0) break;
+        }
+    }
+}
