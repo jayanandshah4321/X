@@ -1,0 +1,254 @@
+Assignment 7 — NetBeans Web Service Application (Summary)
+Required Versions
+JDK 8
+NetBeans 8.2
+GlassFish Server
+Goal of Assignment
+
+Create:
+
+A Web Service (Server Project)
+A Client Project
+A frontend HTML form
+A servlet that calls the web service methods
+PART 1 — Create Server Project
+Step 1: Create Java Web Application
+
+Go to:
+
+File → New Project → Java Web → Web Application
+
+Configuration
+Project Name: Server
+Server: GlassFish
+Java EE Version: Java EE 7 Web
+Framework: None
+
+Click:
+Next → Finish
+
+PART 2 — Create Web Service
+Step 2: Create Web Service
+
+In Projects tab:
+
+Right Click Project → New → Web Service
+
+Details
+Web Service Name: WebSer
+Package: com.myservice
+Check:
+Create Web Service from Scratch
+
+Click:
+Finish
+
+PART 3 — Add Operations
+Step 3: Create Methods/Operations
+
+Open:
+
+Web Services → WebSer.java
+
+Delete default hello() method.
+
+Then:
+
+Right Click WebSer → Add Operation
+
+Create operations like:
+
+add()
+subtract()
+multiply()
+divide()
+
+Add parameters such as:
+
+int num1, int num2
+
+Example:
+
+public int add(int num1, int num2)
+{
+    return num1 + num2;
+}
+PART 4 — Build and Deploy
+Step 4: Build Project
+
+Right click project:
+
+Build
+
+Check output window for success.
+
+Step 5: Deploy Project
+
+Right click project:
+
+Deploy
+
+Check GlassFish deployment output.
+
+PART 5 — Test Web Service
+Step 6: Test Web Service
+
+Right click:
+
+WebSer → Test Web Service
+
+Browser opens automatically.
+
+You can test all operations.
+
+PART 6 — Create Client Project
+Step 7: Create Another Project
+
+Create new Web Application project.
+
+Project Name:
+Client
+
+PART 7 — Create Frontend Form
+Step 8: Create HTML Form
+
+Open:
+
+Client → Web Pages → WEB-INF → index.html
+
+Open Palette:
+Window → IDE Tools → Palette
+
+Drag a Form into <body>.
+
+Form Settings
+Action: CalcServlet
+Method: GET
+HTML Form Code
+<form action="CalcServlet" method="GET">
+
+Enter Num1:
+<input type="text" name="num1"/><br>
+
+Enter Num2:
+<input type="text" name="num2"/><br>
+
+<input type="submit" value="Submit"/>
+
+</form>
+PART 8 — Make Client Consume Web Service
+Step 9: Create Web Service Client
+
+Right click Client project:
+
+New → Web Service Client
+
+If not visible:
+search in “Other”.
+
+Select Server Project
+
+Browse:
+Server → WebSer
+
+Click:
+Finish
+
+A folder named:
+Web Service References
+will appear.
+
+PART 9 — Create Servlet
+Step 10: Create Servlet
+
+Right click Client project:
+
+New → Servlet
+
+Servlet Name:
+CalcServlet
+
+(Must match form action)
+
+Check:
+Add information to deployment descriptor
+
+Click:
+Finish
+
+PART 10 — Add Web Service Operations to Servlet
+Step 11: Add Generated Methods
+
+From:
+
+Web Service References → WebSer → WebSerPort
+
+Drag generated operations into CalcServlet.java
+
+Place them below:
+
+HttpServlet methods
+
+NetBeans automatically generates client code.
+
+PART 11 — Edit Servlet Logic
+Step 12: Get User Inputs
+
+Inside servlet:
+
+int num1 = Integer.parseInt(request.getParameter("num1"));
+
+int num2 = Integer.parseInt(request.getParameter("num2"));
+Call Web Service Method
+
+Example:
+
+out.println("<h1>Addition is "
+        + add(num1, num2)
+        + "</h1>");
+PART 12 — Build Client
+Step 13: Clean and Build
+
+Right click Client project:
+
+Clean and Build
+
+PART 13 — Run Application
+Step 14: Run Project
+
+Right click HTML file or project:
+
+Run File
+
+Browser opens.
+
+Enter two numbers.
+
+Servlet calls Web Service and displays result.
+
+Overall Flow
+HTML Form
+   ↓
+Servlet (CalcServlet)
+   ↓
+Web Service Client Stub
+   ↓
+Server Web Service (WebSer)
+   ↓
+Result Returned
+Important Components
+Component	Purpose
+Web Service	Performs operations
+Client Project	Uses the service
+Servlet	Connects frontend to service
+HTML Form	Takes user input
+GlassFish	Runs application
+NetBeans	IDE for development
+Final Outcome
+
+You create a distributed Java web application where:
+
+frontend sends data,
+servlet processes request,
+web service performs operation,
+result is displayed in browser.
