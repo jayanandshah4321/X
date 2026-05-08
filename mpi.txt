@@ -1,3 +1,9 @@
+export MPJ_HOME=/Users/jayanandsameershah/Downloads/mpj-v0_44
+echo $MPJ_HOME
+javac -cp ".:$MPJ_HOME/lib/mpj.jar" Ass.java
+$MPJ_HOME/bin/mpjrun.sh -np 4 Ass
+
+
 import mpi.*;
 import java.util.Random;
 
